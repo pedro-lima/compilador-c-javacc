@@ -1,0 +1,432 @@
+/**
+ * JJTree template file created by SF JavaCC plugin 1.5.17+ wizard for JavaCC 1.5.0+
+ */
+options
+{
+  JDK_VERSION = "1.5";
+  STATIC = false;
+  MULTI = true;
+  NODE_PREFIX = "";
+  VISITOR = true;
+  VISITOR_DATA_TYPE = "Controlador";
+  NODE_CLASS = "CustomNode";
+  DEBUG_LOOKAHEAD = true;
+}
+
+PARSER_BEGIN(Gramatica)
+package br.unipe.compilador.analisador;
+import br.unipe.compilador.analisador.CustomNode.TIPO;
+
+public class Gramatica
+{
+  Controlador control = new Controlador();
+}
+
+PARSER_END(Gramatica)
+
+TOKEN_MGR_DECLS :
+{}
+
+/* Espacos a serem desprezados no inicio de cada token */
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| "\f"
+}
+
+SKIP :
+{
+  "/*" : multilinecomment
+}
+
+SKIP :
+{
+  "//" : singlelinecomment
+}
+
+< multilinecomment >
+SKIP :
+{
+  "*/" : DEFAULT
+| < ~[ ] >
+}
+
+< singlelinecomment >
+SKIP :
+{
+  < [ "\n", "\r" ] > : DEFAULT
+| < ~[ ] >
+}
+
+/* Trata os erros léxicos */
+SPECIAL_TOKEN :
+{
+  < INVALID_LEXICAL : (~[ "a"-"z", "A"-"Z", "0"-"9", "\"", "(", ")", "[", "]", "{", "}", ";", ",", ".", "=", ">", "<", "!", "+", "-", "*", "/", "%", " ", "\t", "\n", "\r", "\f" ])+ >
+| < INVALID_CONST : "\"" (~[ "\n", "\r", "\"" ])* [ "\n", "\r" ] >
+}
+
+TOKEN :
+{
+  < INT : "int" >
+| < FLOAT : "float" >
+| < VOID : "void" >
+}
+
+TOKEN :
+{
+  < RETURN : "return" >
+| < WHILE : "while" >
+| < ELSE : "else" >
+| < IF : "if" >
+| < BREAK : "break" >
+| < TRUE : "true" >
+| < FALSE : "false" >
+}
+
+TOKEN :
+{
+  < SOMAR : "+" >
+| < SUBTRAIR : "-" >
+| < MULTIPLICAR : "*" >
+| < DIVIDIR : "/" >
+}
+
+TOKEN :
+{
+  < PARENTESE_ABRIR : "(" >
+| < PARENTESE_FECHAR : ")" >
+| < CHAVE_ABRIR : "{" >
+| < CHAVE_FECHAR : "}" >
+}
+
+TOKEN :
+{
+  < OR : "OR" >
+| < AND : "AND" >
+}
+
+TOKEN :
+{
+  < ATRIBUICAO : "=" >
+| < MENOR_QUE : "<" >
+| < MAIOR_QUE : ">" >
+| < IGUAL : "==" >
+| < DEFERENTE : "!=" >
+| < MENOR_IGUAL : "<=" >
+| < MAIOR_IGUAL : " >=" >
+}
+
+TOKEN :
+{
+  < PONTO_VIRGULA : ";" >
+| < VIRGULA : "," >
+}
+
+TOKEN :
+{
+  < NUM_INTEIRO : (< DIGITO >)+ >
+| < NUM_PF : (< DIGITO >)+ "." (< DIGITO >)+ >
+| < ID :
+    < LETRA >
+    (
+      < LETRA >
+    | < DIGITO >
+    )* >
+| < #LETRA : [ "_", "a"-"z", "A"-"Z" ] >
+| < #DIGITO : [ "0"-"9" ] >
+}
+
+SimpleNode Programa() :
+{}
+{
+  (
+    Funcao()
+  )
+  < EOF >
+  {
+    return jjtThis;
+  }
+}
+
+void Funcao() :
+{
+  Token t;
+  CustomNode.TIPO tipo;
+}
+{
+  tipo = TipoRetorno() t = < ID > ParametrosFuncao() CorpoFuncao()
+  {
+    control.declaracao(tipo, t, true, true);
+  }
+}
+
+TIPO TipoRetorno() :
+{}
+{
+  < VOID >
+  {
+    return TIPO.NULL;
+  }
+| < INT >
+  {
+    return TIPO.INT;
+  }
+| < FLOAT >
+  {
+    return TIPO.FLOAT;
+  }
+}
+
+void ParametrosFuncao() #void :
+{}
+{
+  < PARENTESE_ABRIR >
+  [
+    ParametroFuncao()
+    (
+      < VIRGULA > ParametroFuncao()
+    )*
+  ]
+  < PARENTESE_FECHAR >
+}
+
+void ParametroFuncao() :
+{
+  Token t;
+  CustomNode.TIPO tipo;
+}
+{
+  (
+    < INT >
+    {
+      tipo = CustomNode.TIPO.INT;
+    }
+  | < FLOAT >
+    {
+      tipo = CustomNode.TIPO.FLOAT;
+    }
+  )
+  t = < ID >
+  {
+    control.declaracao(tipo, t);
+  }
+}
+
+void CorpoFuncao() :
+{}
+{
+  < CHAVE_ABRIR >
+  (
+    Declaracao() < PONTO_VIRGULA >
+  )*
+  (
+    Comando()
+  )*
+  < CHAVE_FECHAR >
+}
+
+void Comando() #void :
+{}
+{
+  (
+    Atribuicao() < PONTO_VIRGULA >
+  )
+| If()
+| While()
+|
+  (
+    Return() < PONTO_VIRGULA >
+  )
+| (< BREAK > < PONTO_VIRGULA >)
+| < PONTO_VIRGULA >
+}
+
+void Declaracao() :
+{
+  Token t;
+  CustomNode.TIPO tipo;
+}
+{
+  (
+    < INT >
+    {
+      tipo = TIPO.INT;
+    }
+  | < FLOAT >
+    {
+      tipo = TIPO.FLOAT;
+    }
+  )
+  t = < ID > [< ATRIBUICAO > ExpressaoMatematica()]
+  {
+    control.declaracao(tipo, t);
+    jjtThis.jjtSetValue(t);
+  }
+}
+
+void Atribuicao() :
+{
+  Token t;
+}
+{
+  t = < ID > ValorAtribuicao()
+  {
+    jjtThis.jjtSetValue(t);
+  }
+}
+
+void ValorAtribuicao() #void :
+{}
+{
+  < ATRIBUICAO > ExpressaoMatematica()
+}
+
+void ExpressaoMatematica() :
+{}
+{
+  TermoMatematico()
+  (
+    < SOMAR > TermoMatematico() #Adicao(2)
+| < SUBTRAIR > TermoMatematico() #Subtracao(2)
+)*
+}
+
+void TermoMatematico() #void :
+{}
+{
+  FatorMatematico()
+  (
+    < MULTIPLICAR > FatorMatematico() #Multiplicacao(2)
+| < DIVIDIR > FatorMatematico() #Divisao(2)
+)*
+}
+
+void FatorMatematico() #void :
+{}
+{
+  LOOKAHEAD(3)
+  (
+    < PARENTESE_ABRIR > ExpressaoMatematica() < PARENTESE_FECHAR >
+  )
+| TipoMatematico()
+}
+
+void TipoMatematico() #void :
+{}
+{
+  Identificador()
+| Numero()
+}
+
+void Identificador() :
+{
+  Token t;
+}
+{
+  t = < ID >
+  {
+    jjtThis.setTipo(control.getTipo(t));
+    jjtThis.jjtSetValue(t);
+  }
+}
+
+void Numero() :
+{
+  Token t;
+}
+{
+  (
+    t = < NUM_INTEIRO >
+    {
+      jjtThis.setTipo(CustomNode.TIPO.INT);
+    }
+  | t = < NUM_PF >
+    {
+      jjtThis.setTipo(CustomNode.TIPO.FLOAT);
+    }
+  )
+  {
+    jjtThis.jjtSetValue(t);
+  }
+}
+
+void If() :
+{}
+{
+  < IF > < PARENTESE_ABRIR > ExpressaoLogica() < PARENTESE_FECHAR > < CHAVE_ABRIR >
+  (
+    Comando()
+  )*
+  < CHAVE_FECHAR > [ Else() ]
+}
+
+void Else() :
+{}
+{
+  < ELSE > < CHAVE_ABRIR >
+  (
+    Comando()
+  )*
+  < CHAVE_FECHAR >
+}
+
+void While() :
+{}
+{
+  < WHILE > < PARENTESE_ABRIR > ExpressaoLogica() < PARENTESE_FECHAR > < CHAVE_ABRIR >
+  (
+    Comando()
+  )*
+  < CHAVE_FECHAR >
+}
+
+void Return() :
+{}
+{
+  < RETURN > [ ExpressaoMatematica() ]
+}
+
+void ExpressaoLogica() :
+{}
+{
+  TermoLogico()
+  (
+    < OR > TermoLogico() #Or(2)
+)*
+}
+
+void TermoLogico() #void :
+{}
+{
+  FatorLogico()
+  (
+    < AND > FatorLogico() #And(2)
+)*
+}
+
+void FatorLogico() #void :
+{}
+{
+  LOOKAHEAD(3)
+  (
+    < PARENTESE_ABRIR > ExpressaoLogica() < PARENTESE_FECHAR >
+  )
+| RelacaoLogica()
+}
+
+void RelacaoLogica() #void :
+{}
+{
+  ExpressaoMatematica()
+  (
+    < MENOR_QUE > ExpressaoMatematica() #MenorQue(2)
+| < MAIOR_QUE > ExpressaoMatematica() #MaiorQue(2)
+| < IGUAL > ExpressaoMatematica() #Igual(2)
+| < DEFERENTE > ExpressaoMatematica() #Diferente(2)
+| < MENOR_IGUAL > ExpressaoMatematica() #MenorIgual(2)
+| < MAIOR_IGUAL > ExpressaoMatematica() #MaiorIgual(2)
+)
+}
